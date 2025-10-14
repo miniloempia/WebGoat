@@ -75,7 +75,7 @@ public class WebSecurityConfig {
         .passwordParameter("password")
         .permitAll();
     http.logout().deleteCookies("JSESSIONID").invalidateHttpSession(true);
-    http.csrf().disable();
+
 
     http.headers().cacheControl().disable();
     http.exceptionHandling().authenticationEntryPoint(new AjaxAuthenticationEntryPoint("/login"));
