@@ -27,6 +27,8 @@ import static org.springframework.http.MediaType.ALL_VALUE;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -75,8 +77,33 @@ public class FileServer {
     var user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     var destinationDir = new File(fileLocation, user.getUsername());
     destinationDir.mkdirs();
-    myFile.transferTo(new File(destinationDir, myFile.getOriginalFilename()));
-    log.debug("File saved to {}", new File(destinationDir, myFile.getOriginalFilename()));
+    
+    // Sanitize filename to prevent path traversal attacks
+    String originalFilename = myFile.getOriginalFilename();
+    if (originalFilename == null || originalFilename.isEmpty()) {
+      throw new IOException("Invalid filename: filename cannot be null or empty");
+    }
+    
+    // Extract only the filename component, removing any path information
+    Path filenamePath = Paths.get(originalFilename);
+    String sanitizedFilename = filenamePath.getFileName().toString();
+    
+    // Additional validation: reject filenames that still contain path traversal sequences
+    if (sanitizedFilename.contains("..") || sanitizedFilename.contains("/") || sanitizedFilename.contains("\\")) {
+      throw new IOException("Invalid filename: path traversal sequences are not allowed");
+    }
+    
+    // Validate that the final destination is within the intended directory
+    File destinationFile = new File(destinationDir, sanitizedFilename);
+    String canonicalDestinationPath = destinationFile.getCanonicalPath();
+    String canonicalDestinationDirPath = destinationDir.getCanonicalPath();
+    
+    if (!canonicalDestinationPath.startsWith(canonicalDestinationDirPath + File.separator)) {
+      throw new IOException("Invalid filename: file must be uploaded to user directory");
+    }
+    
+    myFile.transferTo(destinationFile);
+    log.debug("File saved to {}", destinationFile);
 
     return new ModelAndView(
         new RedirectView("files", true),
