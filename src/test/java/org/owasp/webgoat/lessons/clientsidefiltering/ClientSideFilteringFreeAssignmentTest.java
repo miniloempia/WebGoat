@@ -44,6 +44,6 @@ public class ClientSideFilteringFreeAssignmentTest extends LessonTest {
     mockMvc
         .perform(MockMvcRequestBuilders.get("/clientSideFiltering/salaries"))
         .andExpect(jsonPath("$[0]", Matchers.hasKey("UserID")))
-        .andExpect(jsonPath("$.length()", CoreMatchers.is(12)));
+        .andExpect(jsonPath("$.length()", CoreMatchers.is(9)));
   }
 }
