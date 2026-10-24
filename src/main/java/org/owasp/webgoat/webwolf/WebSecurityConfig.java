@@ -51,6 +51,8 @@ public class WebSecurityConfig {
     http.authorizeHttpRequests(
         auth ->
             auth.requestMatchers(HttpMethod.GET, "/files", "/mail", "/requests").authenticated());
+    http.authorizeHttpRequests(
+        auth -> auth.requestMatchers(HttpMethod.DELETE, "/mail").authenticated());
     http.authorizeHttpRequests().anyRequest().permitAll();
     http.csrf().disable().formLogin().loginPage("/login").failureUrl("/login?error=true");
     http.formLogin().loginPage("/login").defaultSuccessUrl("/home", true).permitAll();

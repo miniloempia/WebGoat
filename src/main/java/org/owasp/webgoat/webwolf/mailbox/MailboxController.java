@@ -64,6 +64,8 @@ public class MailboxController {
   @DeleteMapping("/mail")
   @ResponseStatus(HttpStatus.ACCEPTED)
   public void deleteAllMail() {
-    mailboxRepository.deleteAll();
+    UserDetails user =
+        (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    mailboxRepository.deleteByRecipient(user.getUsername());
   }
 }
