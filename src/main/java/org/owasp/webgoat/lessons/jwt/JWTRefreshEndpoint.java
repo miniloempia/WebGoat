@@ -30,11 +30,10 @@ import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
@@ -58,9 +57,10 @@ import org.springframework.web.bind.annotation.RestController;
 })
 public class JWTRefreshEndpoint extends AssignmentEndpoint {
 
-  public static final String PASSWORD = "bm5nhSkxCXZkKRy4";
-  private static final String JWT_PASSWORD = "bm5n3SkxCX4kKRy4";
-  private static final List<String> validRefreshTokens = new ArrayList<>();
+  public static final String PASSWORD = "****KRy4";
+  private static final String JWT_PASSWORD = "****KRy4";
+  // Maps each outstanding refresh token to the subject it was issued to.
+  private static final Map<String, String> validRefreshTokens = new ConcurrentHashMap<>();
 
   @PostMapping(
       value = "/JWT/refresh/login",
@@ -90,7 +90,7 @@ public class JWTRefreshEndpoint extends AssignmentEndpoint {
             .compact();
     Map<String, Object> tokenJson = new HashMap<>();
     String refreshToken = RandomStringUtils.randomAlphabetic(20);
-    validRefreshTokens.add(refreshToken);
+    validRefreshTokens.put(refreshToken, user);
     tokenJson.put("access_token", token);
     tokenJson.put("refresh_token", refreshToken);
     return tokenJson;
@@ -144,8 +144,8 @@ public class JWTRefreshEndpoint extends AssignmentEndpoint {
 
     if (user == null || refreshToken == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-    } else if (validRefreshTokens.contains(refreshToken)) {
-      validRefreshTokens.remove(refreshToken);
+    } else if (validRefreshTokens.remove(refreshToken, user)) {
+      // Atomically redeem the token only if it was issued to the subject of the supplied JWT.
       return ok(createNewTokens(user));
     } else {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
