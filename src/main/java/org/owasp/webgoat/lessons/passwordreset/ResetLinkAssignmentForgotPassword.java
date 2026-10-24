@@ -23,6 +23,8 @@
 package org.owasp.webgoat.lessons.passwordreset;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AttackResult;
@@ -68,11 +70,11 @@ public class ResetLinkAssignmentForgotPassword extends AssignmentEndpoint {
     String resetLink = UUID.randomUUID().toString();
     ResetLinkAssignment.resetLinks.add(resetLink);
     String host = request.getHeader("host");
+    String webWolfAuthority = resolveAllowedAuthority(host);
     if (ResetLinkAssignment.TOM_EMAIL.equals(email)
-        && (host.contains(webWolfPort)
-            || host.contains(webWolfHost))) { // User indeed changed the host header.
+        && webWolfAuthority != null) { // User indeed changed the host header.
       ResetLinkAssignment.userToTomResetLink.put(getWebSession().getUserName(), resetLink);
-      fakeClickingLinkEmail(host, resetLink);
+      fakeClickingLinkEmail(webWolfAuthority, resetLink);
     } else {
       try {
         sendMailToUser(email, host, resetLink);
@@ -82,6 +84,36 @@ public class ResetLinkAssignmentForgotPassword extends AssignmentEndpoint {
     }
 
     return success(this).feedback("email.send").feedbackArgs(email).build();
+  }
+
+  /**
+   * Validates the client supplied Host header against an allowlist of WebWolf authorities. Only the
+   * exact host names in the allowlist combined with the configured WebWolf port are accepted.
+   *
+   * @return the normalized authority (host:port) or null when the value is not allowed
+   */
+  private String resolveAllowedAuthority(String host) {
+    if (host == null) {
+      return null;
+    }
+    try {
+      List<String> allowedDomains = List.of(webWolfHost, "localhost"); // add your allowed domains here
+      URI uri = new URI("http://" + host);
+      if (uri.getUserInfo() != null
+          || uri.getHost() == null
+          || uri.getPort() != Integer.parseInt(webWolfPort)
+          || (uri.getRawPath() != null && !uri.getRawPath().isEmpty())
+          || uri.getRawQuery() != null
+          || uri.getRawFragment() != null) {
+        return null;
+      }
+      if (!allowedDomains.contains(uri.getHost())) {
+        return null;
+      }
+      return uri.getHost() + ":" + uri.getPort();
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   private void sendMailToUser(String email, String host, String resetLink) {
