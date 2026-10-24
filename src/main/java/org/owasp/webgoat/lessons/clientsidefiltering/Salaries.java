@@ -51,6 +51,8 @@ import org.xml.sax.InputSource;
 @Slf4j
 public class Salaries {
 
+  private static final String AUTHORIZED_MANAGER_ID = "102";
+
   @Value("${webgoat.user.directory}")
   private String webGoatHomeDirectory;
 
@@ -86,11 +88,14 @@ public class Salaries {
 
       StringBuilder sb = new StringBuilder();
 
-      sb.append("/Employees/Employee/UserID | ");
-      sb.append("/Employees/Employee/FirstName | ");
-      sb.append("/Employees/Employee/LastName | ");
-      sb.append("/Employees/Employee/SSN | ");
-      sb.append("/Employees/Employee/Salary ");
+      // Server-side enforcement: only records of employees managed by the logged-in manager
+      // (Moe Stooge, userID 102) are selected. The CEO's record is therefore never returned.
+      String scope = "[Managers/Manager/text()='" + AUTHORIZED_MANAGER_ID + "']";
+      sb.append("/Employees/Employee").append(scope).append("/UserID | ");
+      sb.append("/Employees/Employee").append(scope).append("/FirstName | ");
+      sb.append("/Employees/Employee").append(scope).append("/LastName | ");
+      sb.append("/Employees/Employee").append(scope).append("/SSN | ");
+      sb.append("/Employees/Employee").append(scope).append("/Salary ");
 
       String expression = sb.toString();
       nodes = (NodeList) path.evaluate(expression, inputSource, XPathConstants.NODESET);
