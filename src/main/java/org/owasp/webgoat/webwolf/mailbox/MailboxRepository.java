@@ -32,4 +32,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MailboxRepository extends JpaRepository<Email, String> {
 
   List<Email> findByRecipientOrderByTimeDesc(String recipient);
+
+  @org.springframework.transaction.annotation.Transactional
+  void deleteByRecipient(String recipient);
 }
