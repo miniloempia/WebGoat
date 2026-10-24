@@ -40,6 +40,20 @@ public class ProfileUploadBase extends AssignmentEndpoint {
 
     try {
       var uploadedFile = new File(uploadDirectory, fullName);
+
+      // Enforce containment before any file is created or written: the resolved target must be
+      // located strictly inside the current user's upload directory.
+      var canonicalUploadDirectory = uploadDirectory.getCanonicalFile().toPath();
+      var canonicalTarget = uploadedFile.getCanonicalFile().toPath();
+      if (!canonicalTarget.startsWith(canonicalUploadDirectory)
+          || canonicalTarget.equals(canonicalUploadDirectory)) {
+        return failed(this)
+            .attemptWasMade()
+            .feedback("path-traversal-profile-attempt")
+            .feedbackArgs(canonicalTarget.toString())
+            .build();
+      }
+
       uploadedFile.createNewFile();
       FileCopyUtils.copy(file.getBytes(), uploadedFile);
 
