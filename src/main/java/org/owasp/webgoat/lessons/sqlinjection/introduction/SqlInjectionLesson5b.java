@@ -59,12 +59,8 @@ public class SqlInjectionLesson5b extends AssignmentEndpoint {
   }
 
   protected AttackResult injectableQuery(String login_count, String accountName) {
-    String queryString = "SELECT * From user_data WHERE Login_Count = ? and userid= " + accountName;
+    String queryString = "SELECT * From user_data WHERE Login_Count = ? and userid = ?";
     try (Connection connection = dataSource.getConnection()) {
-      PreparedStatement query =
-          connection.prepareStatement(
-              queryString, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-
       int count = 0;
       try {
         count = Integer.parseInt(login_count);
@@ -79,7 +75,23 @@ public class SqlInjectionLesson5b extends AssignmentEndpoint {
             .build();
       }
 
+      int accountId = 0;
+      try {
+        accountId = Integer.parseInt(accountName == null ? "" : accountName.trim());
+      } catch (NumberFormatException e) {
+        return failed(this)
+            .output(
+                "Could not parse: "
+                    + org.springframework.web.util.HtmlUtils.htmlEscape(String.valueOf(accountName))
+                    + " to a number")
+            .build();
+      }
+
+      PreparedStatement query =
+          connection.prepareStatement(
+              queryString, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
       query.setInt(1, count);
+      query.setInt(2, accountId);
       // String query = "SELECT * FROM user_data WHERE Login_Count = " + login_count + " and userid
       // = " + accountName, ;
       try {
