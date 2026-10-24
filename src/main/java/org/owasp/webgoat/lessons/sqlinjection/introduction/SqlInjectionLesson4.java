@@ -29,6 +29,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.regex.Pattern;
 import org.owasp.webgoat.container.LessonDataSource;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
@@ -55,7 +56,24 @@ public class SqlInjectionLesson4 extends AssignmentEndpoint {
     return injectableQuery(query);
   }
 
+  /**
+   * The lesson only requires adding the "phone" column to the user's own "employees" table. Only
+   * that single, unqualified statement is accepted, so that arbitrary SQL (qualified references to
+   * other schemas such as CONTAINER, stacked statements, other DDL/DML) never reaches the shared
+   * database connection.
+   */
+  private static final Pattern ALLOWED_STATEMENT =
+      Pattern.compile(
+          "^\\s*ALTER\\s+TABLE\\s+employees\\s+ADD\\s+(?:COLUMN\\s+)?phone\\s+[A-Za-z]+"
+              + "(?:\\s*\\(\\s*\\d{1,4}\\s*\\))?\\s*;?\\s*$",
+          Pattern.CASE_INSENSITIVE);
+
   protected AttackResult injectableQuery(String query) {
+    if (query == null || query.length() > 200 || !ALLOWED_STATEMENT.matcher(query).matches()) {
+      return failed(this)
+          .output("Only a statement adding the column phone to the employees table is allowed.")
+          .build();
+    }
     try (Connection connection = dataSource.getConnection()) {
       try (Statement statement =
           connection.createStatement(TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
